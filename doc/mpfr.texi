@@ -3842,9 +3842,9 @@ called @code{mpfr_hash32_update}, with signature @code{hash_update_fn_t}.
 It also provides a default function to finalize a 32-bit hash digest,
 called @code{mpfr_hash32_final}, with signature @code{hash_final_fn_t}.
 Users can write their own update and final functions to support other hash
-algorithms. Those functions have to have the same signature defined by
-@code{hash_update_fn_t} and @code{hash_final_fn_t} typedefs, and should
-return 1 if successful, and a 0 if an error occurred.
+algorithms. These functions should have the same signature as
+@code{hash_update_fn_t} and @code{hash_final_fn_t} respectively, and should
+return 1 if successful, and 0 if an error occurred.
 
 Note: This function is experimental, and does not yet support digest sizes
 other than 32 bits.
