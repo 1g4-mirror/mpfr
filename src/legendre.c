@@ -57,9 +57,7 @@ mpfr_legendre (mpfr_ptr res, long n, mpfr_srcptr x, mpfr_rnd_t rnd_mode)
   if (!is_within_domain)
     {
       MPFR_SET_NAN (res);
-      /* as specified in the documentation, "[...] a NaN result
-         (Not-a-Number) always corresponds to an exact return value." */
-      return 0;
+      MPFR_RET_NAN;
     }
 
   /* 1 and -1 are the (respectively) upper and lower bound of the Legendre
@@ -67,38 +65,27 @@ mpfr_legendre (mpfr_ptr res, long n, mpfr_srcptr x, mpfr_rnd_t rnd_mode)
      using Bonnet's recursion. Both 1 and -1 are exactly representable,
      so we this will always return 0 */
   if (mpfr_equal_p (x, __gmpfr_one))
-    {
-      mpfr_set_ui (res, 1, rnd_mode);
-      return 0;
-    }
+    return mpfr_set_si (res, 1, rnd_mode);
   if (mpfr_equal_p (x, __gmpfr_mone))
-    {
-      mpfr_set_si (res, (n&1) == 0 ? 1 : -1, rnd_mode);
-      return 0;
-    }
+    return mpfr_set_si (res, (n & 1) == 0 ? 1 : -1, rnd_mode);
 
   /* P_0 = 1 */
   if (n == 0)
-    {
-      mpfr_set_ui (res, 1, rnd_mode);
-      /* 1 is exactly representable in MPFR regardless of precision,
-         so this will always return 0 */
-      return 0;
-    }
+    return mpfr_set_si (res, 1, rnd_mode);
+
   /* P_1 = x */
   if (n == 1)
     {
       /* result is set to x. The ternary value of mpfr_set is returned */
-      return mpfr_set(res, x, rnd_mode);
+      return mpfr_set (res, x, rnd_mode);
     }
 
   /* Pn(0) = 0 if n is odd */
-  if (MPFR_IS_ZERO (x) && (n&1) == 1)
+  if (MPFR_IS_ZERO (x) && (n & 1) == 1)
     {
+      /* FIXME: What about the sign of zero? */
       MPFR_SET_ZERO (res);
-      /* 0 is exactly representable in MPFR regardless of precision,
-         so this will always return 0 */
-      return 0;
+      MPFR_RET (0);
     }
 
   res_prec = MPFR_PREC (res);
@@ -124,6 +111,8 @@ mpfr_legendre (mpfr_ptr res, long n, mpfr_srcptr x, mpfr_rnd_t rnd_mode)
       mpfr_set_ui (p2, 1, MPFR_RNDN);         /* exact, p2 is b */
       b_i = MPFR_EXP_MIN;                     /* 2^b_i: absolute error on p2 */
       a_i = MPFR_GET_EXP (p1) - realprec - 1; /* 2^a_i: absolute error on p1 */
+      /* FIXME: This is incorrect if x is 0, as 0 does not have an exponent
+         (the case x = 0 with n even is not handled above). */
 
       while (i <= n)
         {
