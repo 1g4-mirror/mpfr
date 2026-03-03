@@ -128,7 +128,9 @@ mpfr_legendre (mpfr_ptr res, long n, mpfr_srcptr x, mpfr_rnd_t rnd_mode)
              case. However, the first_term may also underflow, giving 0,
              and yielding the same issues. Intermediate overflows are not
              taken into account either... If they are not necessarily real
-             overflows (due to the cancellation), UBF might be a solution. */
+             overflows (due to the cancellation), UBF might be a solution.
+             Also be careful with integer overflows in the computation of
+             the error bounds. */
 
           /* first_term = x * (2 * i - 1), with absolute error at step i
              (denoted f_i in algorithms.tex)
