@@ -122,8 +122,8 @@ mpfr_legendre (mpfr_ptr res, long n, mpfr_srcptr x, mpfr_rnd_t rnd_mode)
       /* p1 = x, p2 = 1 */
       inex = mpfr_set (p1, x, MPFR_RNDN);     /* p1 is a is algorithms.tex */
       mpfr_set_ui (p2, 1, MPFR_RNDN);         /* exact, p2 is b */
-      b_i = LONG_MIN;                         /* 2^b_i is the absolute error on p2 */
-      a_i = MPFR_GET_EXP (p1) - realprec - 1; /* 2^a_i is the absolute error on p1 */
+      b_i = MPFR_EXP_MIN;                     /* 2^b_i: absolute error on p2 */
+      a_i = MPFR_GET_EXP (p1) - realprec - 1; /* 2^a_i: absolute error on p1 */
 
       while (i <= n)
         {
@@ -135,11 +135,13 @@ mpfr_legendre (mpfr_ptr res, long n, mpfr_srcptr x, mpfr_rnd_t rnd_mode)
           inex |= mpfr_mul_ui (first_term, x, 2 * i - 1, MPFR_RNDN);
           f_i = MPFR_GET_EXP (first_term) - realprec - 1;
 
-          /* second_term = p2 * (i - 1), with absolute error at step i bounded by
-             g_i <= max(exp(second_term)-p, error(p2) + MPFR_INT_CEIL_LOG2(i-1)+1)
-           */
+          /* second_term = p2 * (i - 1), with absolute error at step i
+             bounded by
+             g_i <= max(exp(second_term)-p,
+                        error(p2) + MPFR_INT_CEIL_LOG2(i-1)+1) */
           inex |= mpfr_mul_ui (second_term, p2, i - 1, MPFR_RNDN);
-          g_i = MAX (MPFR_GET_EXP (second_term) - realprec, b_i + log2_i_m1 + 1);
+          g_i = MAX (MPFR_GET_EXP (second_term) - realprec,
+                     b_i + log2_i_m1 + 1);
 
           /* first_term = first_term * p1, with absolute error at step i
              bounded by
@@ -152,7 +154,8 @@ mpfr_legendre (mpfr_ptr res, long n, mpfr_srcptr x, mpfr_rnd_t rnd_mode)
 
           /* pn = first_term - second_term, with absolute error at step i
              bounded by
-             q_i <= 2 + max(exp(pn)-p-1, error(first_term), error(second_term)) */
+             q_i <= 2 + max(exp(pn)-p-1,
+                            error(first_term), error(second_term)) */
           inex |= mpfr_sub (pn, first_term, second_term, MPFR_RNDN);
           q_i = 2 + MAX3 (MPFR_GET_EXP (pn) - realprec - 1, h_i, g_i);
 
@@ -176,11 +179,12 @@ mpfr_legendre (mpfr_ptr res, long n, mpfr_srcptr x, mpfr_rnd_t rnd_mode)
          2^(a_i - (EXP(p1) - realprec - 1)) */
       lost_bits = a_i - (MPFR_GET_EXP (p1) - realprec);
 
-      /* if inex=0, then all the computation was exact, thus p1 is exactly P_n(x),
-         otherwise we call MPFR_CAN_ROUND() to check if we can deduce the correct
-         rounding */
-      if (inex == 0 || (lost_bits < realprec &&
-                     MPFR_CAN_ROUND (p1, realprec - lost_bits, res_prec, rnd_mode)))
+      /* if inex=0, then all the computation was exact, thus p1 is exactly
+         P_n(x), otherwise we call MPFR_CAN_ROUND() to check if we can deduce
+         the correct rounding */
+      if (inex == 0 ||
+          (lost_bits < realprec &&
+           MPFR_CAN_ROUND (p1, realprec - lost_bits, res_prec, rnd_mode)))
         break;
       MPFR_ZIV_NEXT (loop, realprec);
       MPFR_GROUP_REPREC_5 (group, realprec,
