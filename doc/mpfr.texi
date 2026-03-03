@@ -2222,7 +2222,7 @@ This function is experimental, and does not yet handle intermediate overflows
 and underflows.
 @end deftypefun
 
-@deftypefun int mpfr_legendre (mpfr_t @var{res}, long @var{n}, const mpfr_t @var{x}, mpfr_rnd_t @var{rnd})
+@deftypefun int mpfr_legendre (mpfr_t @var{res}, long int @var{n}, const mpfr_t @var{x}, mpfr_rnd_t @var{rnd})
 @var{res} is set with the value of Legendre's polynomial P_@var{n}(@var{x}),
 rounded in the direction of @var{rnd}, where @var{n} stands for the degree of
 the polynomial (@var{n} is assumed to be non-negative).
