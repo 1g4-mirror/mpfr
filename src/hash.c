@@ -22,19 +22,6 @@ If not, see <https://www.gnu.org/licenses/>. */
 #include "mpfr-impl.h"
 
 #define FNV32_PRIME 0x01000193U
-#define FNV32_BASIS 0x811C9DC5U
-
-/* Defines the type fnv32_t for internal use. We need a number that is
-   guaranteed to be exactly 4 bytes in order to perform bitwise operations
-   within fnv32 */
-#ifndef _MPFR_DIGEST
-#define _MPFR_DIGEST
-#if SIZEOF_UNSIGNED_INT == 4
-typedef unsigned fnv32_t;
-#elif SIZEOF_UNSIGNED_LONG == 4
-typedef unsigned long fnv32_t;
-#endif /* SIZEOF_UNSIGNED_INT */
-#endif /* _MPFR_DIGEST */
 
 /* To extract bytest from a limb we need to check for endianness */
 #if defined (HAVE_LITTLE_ENDIAN)
@@ -101,8 +88,8 @@ get_bytes_size (mpfr_srcptr x)
          + (MPFR_LIMB_SIZE (x) * sizeof (mp_limb_t)); /* significand size */
 }
 
-static fnv32_t
-fnv32 (fnv32_t hash, const unsigned char *bytes, size_t bytes_len)
+static digest32_t
+fnv32 (digest32_t hash, const unsigned char *bytes, size_t bytes_len)
 {
   size_t i;
 
@@ -239,14 +226,14 @@ mpfr_hash32 (mpfr_srcptr x)
   if (!mpfr_unique_bytes (x, &bytes))
     return 0;
 
-  hash = fnv32 (FNV32_BASIS, bytes.content, bytes.len);
+  hash = fnv32 (MPFR_HASH32_BASIS, bytes.content, bytes.len);
   mpfr_bytes_free (&bytes);
 
   return hash;
 }
 
 int
-mpfr_hash32_update (mpfr_digest_ctx_t *ctx, const unsigned char *bytes,
+mpfr_hash32_update (mpfr_digest_ctx_t ctx, const unsigned char *bytes,
                     size_t l)
 {
   if (!ctx || !bytes)
@@ -258,31 +245,43 @@ mpfr_hash32_update (mpfr_digest_ctx_t *ctx, const unsigned char *bytes,
 }
 
 int
-mpfr_hash32_final (const mpfr_digest_ctx_t *ctx, mpfr_digest_t *digest)
+mpfr_hash32_final (const mpfr_digest_ctx_t ctx, mpfr_digest_t *digest)
 {
   *digest = ctx->hash;
   return 1;
 }
 
-void
-mpfr_digest_init (mpfr_digest_ctx_t *ctx, size_t digest_size,
+mpfr_digest_ctx_t
+mpfr_digest_init (mpfr_digest_t basis, size_t digest_size,
                   hash_update_fn_t update_fn, hash_final_fn_t final_fn)
 {
-  ctx->hash = FNV32_BASIS;
+  mpfr_digest_ctx_t ctx;
+
+  ctx = (mpfr_digest_ctx_t) mpfr_allocate_func (sizeof (*ctx));
+  ctx->hash = basis;
   ctx->digest_size = digest_size;
   ctx->update_fn = update_fn;
   ctx->final_fn = final_fn;
+
+  return ctx;
+}
+
+void
+mpfr_digest_ctx_clear (mpfr_digest_ctx_t *ctx)
+{
+  mpfr_free_func (*ctx, sizeof (**ctx));
+  *ctx = NULL;
 }
 
 int
-mpfr_digest_update (mpfr_digest_ctx_t *ctx, const unsigned char *data,
+mpfr_digest_update (mpfr_digest_ctx_t ctx, const unsigned char *data,
                     size_t len)
 {
   return ctx->update_fn (ctx, data, len);
 }
 
 int
-mpfr_digest_update_m (mpfr_digest_ctx_t *ctx, mpfr_srcptr x)
+mpfr_digest_update_m (mpfr_digest_ctx_t ctx, mpfr_srcptr x)
 {
   int ret = 1;
   mpfr_bytes_t bytes;
@@ -297,7 +296,19 @@ mpfr_digest_update_m (mpfr_digest_ctx_t *ctx, mpfr_srcptr x)
 }
 
 int
-mpfr_digest_final (const mpfr_digest_ctx_t *ctx, mpfr_digest_t *digest)
+mpfr_digest_final (const mpfr_digest_ctx_t ctx, mpfr_digest_t *digest)
 {
   return ctx->final_fn (ctx, digest);
+}
+
+mpfr_digest_t
+mpfr_digest_ctx_get_hash (const mpfr_digest_ctx_t ctx)
+{
+  return ctx->hash;
+}
+
+void
+mpfr_digest_ctx_set_hash (mpfr_digest_ctx_t ctx, mpfr_digest_t hash)
+{
+  ctx->hash = hash;
 }

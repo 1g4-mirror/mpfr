@@ -2308,11 +2308,19 @@ __MPFR_DECLSPEC extern unsigned int mpfr_log_type;
 
 #endif /* MPFR_USE_LOGGING */
 
-/**************************************************************
- ******************  Hash digest structure  *******************
- **************************************************************/
+/* Defines the type digest32_t. We need a number that is guaranteed to be
+   exactly 4 bytes in order to perform bitwise operations in 32-bit hash
+   functions */
+#ifndef _MPFR_DIGEST
+#define _MPFR_DIGEST
+#if SIZEOF_UNSIGNED_INT == 4
+typedef unsigned digest32_t;
+#elif SIZEOF_UNSIGNED_LONG == 4
+typedef unsigned long digest32_t;
+#endif /* SIZEOF_UNSIGNED_INT */
+#endif /* _MPFR_DIGEST */
 
-struct mpfr_digest_ctx_t {
+struct mpfr_digest_ctx {
   mpfr_digest_t hash;
   size_t digest_size;
   hash_update_fn_t update_fn;

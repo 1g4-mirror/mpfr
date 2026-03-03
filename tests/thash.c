@@ -351,22 +351,22 @@ test_incremental_hashing (void)
   chunk2_len = strlen (chunk2);
   expected = 708666724;
 
-  mpfr_digest_init (&ctx, MPFR_FNV_HASH32_BYTES, mpfr_hash32_update,
-                    mpfr_hash32_final);
+  ctx = mpfr_digest_init (MPFR_HASH32_BASIS, MPFR_HASH32_BYTES,
+                          mpfr_hash32_update, mpfr_hash32_final);
 
-  if (!mpfr_digest_update (&ctx, (const unsigned char *) chunk1, chunk1_len))
+  if (!mpfr_digest_update (ctx, (const unsigned char *) chunk1, chunk1_len))
     {
       fprintf (stderr, "cannot calculate hash of chunk 1: \"%s\"\n", chunk1);
       exit (1);
     }
 
-  if (!mpfr_digest_update (&ctx, (const unsigned char *) chunk2, chunk2_len))
+  if (!mpfr_digest_update (ctx, (const unsigned char *) chunk2, chunk2_len))
     {
       fprintf (stderr, "cannot calculate hash of chunk 2: \"%s\"\n", chunk2);
       exit (1);
     }
 
-  if (!mpfr_digest_final (&ctx, &got))
+  if (!mpfr_digest_final (ctx, &got))
     {
       fprintf (stderr, "cannot get the resulting digest of chunk1 + chunk2:\n"
                "\"%s\" + \"%s\"\n", chunk1, chunk2);
@@ -379,6 +379,8 @@ test_incremental_hashing (void)
               expected, got);
       exit (1);
     }
+
+  mpfr_digest_ctx_clear (&ctx);
 }
 
 static void
@@ -392,17 +394,17 @@ test_pi_incremental_hashing (void)
   mpfr_init2 (pi, p);
   mpfr_const_pi (pi, MPFR_RNDD);
 
-  mpfr_digest_init (&ctx, MPFR_FNV_HASH32_BYTES, mpfr_hash32_update,
-                    mpfr_hash32_final);
+  ctx = mpfr_digest_init (MPFR_HASH32_BASIS, MPFR_HASH32_BYTES,
+                          mpfr_hash32_update, mpfr_hash32_final);
 
-  if (!mpfr_digest_update_m (&ctx, pi))
+  if (!mpfr_digest_update_m (ctx, pi))
     {
       fprintf (stderr, "cannot calculate hash of pi constant with "
                "mpfr_digest_update_m\n");
       exit (1);
     }
 
-  if (!mpfr_digest_final (&ctx, &h_pi))
+  if (!mpfr_digest_final (ctx, &h_pi))
     {
       fprintf (stderr, "cannot get the resulting digest of pi\n");
       exit (1);
@@ -415,6 +417,79 @@ test_pi_incremental_hashing (void)
       exit (1);
     }
 
+  mpfr_digest_ctx_clear (&ctx);
+  mpfr_clear (pi);
+  mpfr_free_cache ();
+}
+
+static digest32_t
+djb2(digest32_t hash, const unsigned char *bytes, size_t bytes_len)
+{
+    for (size_t i = 0; i < bytes_len; i++)
+      {
+        hash = ((hash << 5) + hash) + bytes[i];
+      }
+    return hash;
+}
+
+static int
+djb2_update (mpfr_digest_ctx_t ctx, const unsigned char *bytes,
+             size_t l)
+{
+  mpfr_digest_t updated_hash;
+
+  if (!ctx || !bytes)
+    return 0;
+
+  updated_hash = djb2 (mpfr_digest_ctx_get_hash (ctx), bytes, l);
+  mpfr_digest_ctx_set_hash (ctx, updated_hash);
+
+  return 1;
+}
+
+static int
+djb2_final (const mpfr_digest_ctx_t ctx, mpfr_digest_t *digest)
+{
+  *digest = mpfr_digest_ctx_get_hash (ctx);
+  return 1;
+}
+
+static void
+test_custom_hash_function (void)
+{
+  digest32_t djb2_basis = 0x00001505;
+  mpfr_prec_t p = 50;
+  mpfr_t pi;
+  mpfr_digest_t h_pi, expected = 1907949046;
+  mpfr_digest_ctx_t ctx;
+
+  mpfr_init2 (pi, p);
+  mpfr_const_pi (pi, MPFR_RNDD);
+
+  ctx = mpfr_digest_init (djb2_basis, MPFR_HASH32_BYTES,
+                          djb2_update, djb2_final);
+
+  if (!mpfr_digest_update_m (ctx, pi))
+    {
+      fprintf (stderr, "cannot calculate hash of pi constant with "
+               "mpfr_digest_update_m\n");
+      exit (1);
+    }
+
+  if (!mpfr_digest_final (ctx, &h_pi))
+    {
+      fprintf (stderr, "cannot get the resulting digest of pi\n");
+      exit (1);
+    }
+
+  if (h_pi != expected)
+    {
+      printf ("pi digest (djb2) should be %lu; got %lu\n",
+              expected, h_pi);
+      exit (1);
+    }
+
+  mpfr_digest_ctx_clear (&ctx);
   mpfr_clear (pi);
   mpfr_free_cache ();
 }
@@ -441,6 +516,10 @@ main (int argc, char *argv[])
 
   /* Incremental hashing of pi constant */
   test_pi_incremental_hashing ();
+
+  /* This test calculate the hash of the number pi with a user defined hash
+     function, i.e. djb2 */
+  test_custom_hash_function ();
 
   tests_end_mpfr ();
   return 0;

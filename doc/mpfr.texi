@@ -3831,11 +3831,12 @@ Free the buffer allocated by @code{mpfr_unique_bytes} and set
 Note: The ownership of @var{bytes} itself is kept by the user.
 @end deftypefun
 
-@deftypefun void mpfr_digest_init (mpfr_digest_ctx_t *@var{ctx}, size_t @var{digest_size}, hash_update_fn_t @var{update_fn}, hash_final_fn_t @var{final_fn})
-Initialize the digest context @var{ctx} to compute a hash digest of size
-@var{digest_size} bytes, using the functions @var{update_fn} and @var{final_fn}
-to update the hash state with new data and to finalize the computation
-of the digest respectively. The functions @var{update_fn} and @var{final_fn}
+@deftypefun mpfr_digest_ctx_t mpfr_digest_init (mpfr_digest_t @var{basis}, size_t @var{digest_size}, hash_update_fn_t @var{update_fn}, hash_final_fn_t @var{final_fn})
+Allocate and initialize a new digest context with initial hash state @var{basis}
+to compute a hash digest of size @var{digest_size} bytes, using the functions
+@var{update_fn} and @var{final_fn} to update the hash state with new data and
+to finalize the computation of the digest respectively.
+The functions @var{update_fn} and @var{final_fn}
 for FNV-1a 32-bit hash functions are provided by the MPFR library itself
 (see below). MPFR provides a default function to update a 32-bit hash digest,
 called @code{mpfr_hash32_update}, with signature @code{hash_update_fn_t}.
@@ -3845,21 +3846,25 @@ Users can write their own update and final functions to support other hash
 algorithms. These functions should have the same signature as
 @code{hash_update_fn_t} and @code{hash_final_fn_t} respectively, and should
 return 1 if successful, and 0 if an error occurred.
+Return the newly allocated context. The context must be freed by calling
+@code{mpfr_digest_ctx_clear} when no longer needed.
 
 Note: This function is experimental, and does not yet support digest sizes
 other than 32 bits.
-
-Note: The user maintains the ownership of the context @var{ctx}, and it must be
-already allocated when passed to @code{mpfr_digest_init}.
 @end deftypefun
 
-@deftypefun int mpfr_digest_update (mpfr_digest_ctx_t *@var{ctx}, const unsigned char *@var{data}, size_t @var{len})
+@deftypefun void mpfr_digest_ctx_clear (mpfr_digest_ctx_t *@var{ctx})
+Free the digest context pointed to by @var{ctx}, previously allocated by
+@code{mpfr_digest_init}, and set @code{*ctx} to a null pointer.
+@end deftypefun
+
+@deftypefun int mpfr_digest_update (mpfr_digest_ctx_t @var{ctx}, const unsigned char *@var{data}, size_t @var{len})
 Update the context @var{ctx} with the hash digest of the byte sequences in
 @var{data}, of length @var{len} bytes.
 Return 1 if successful, and 0 if an error occurred.
 @end deftypefun
 
-@deftypefun int mpfr_digest_update_m (mpfr_digest_ctx_t *@var{ctx}, const mpfr_t @var{x})
+@deftypefun int mpfr_digest_update_m (mpfr_digest_ctx_t @var{ctx}, const mpfr_t @var{x})
 Update the digest context @var{ctx} with the data of the MPFR number
 @var{x}. The MPFR number is converted to a unique byte representation
 using @code{mpfr_unique_bytes} before being used in the update function.
@@ -3871,7 +3876,7 @@ Note: This function maintains the consistency with
 +0.0 and -0.0 have the same digest.
 @end deftypefun
 
-@deftypefun int mpfr_digest_final (const mpfr_digest_ctx_t *@var{ctx}, mpfr_digest_t *@var{digest})
+@deftypefun int mpfr_digest_final (const mpfr_digest_ctx_t @var{ctx}, mpfr_digest_t *@var{digest})
 Finalize the computation of the hash digest in the context @var{ctx},
 and store the result in the buffer pointed to by @var{digest}, which
 must be already allocated and be large enough to hold
@@ -3879,7 +3884,7 @@ the digest (as specified when initializing the context).
 Return 1 if successful, and 0 if an error occurred.
 @end deftypefun
 
-@deftypefun int mpfr_hash32_update (mpfr_digest_ctx_t *@var{ctx}, const unsigned char *@var{bytes}, size_t @var{l})
+@deftypefun int mpfr_hash32_update (mpfr_digest_ctx_t @var{ctx}, const unsigned char *@var{bytes}, size_t @var{l})
 This is the default function to update a 32-bit hash digest using
 the FNV-1a hash algorithm. It can be used as the @var{update_fn} argument
 of @code{mpfr_digest_init}. The function updates the hash state in
@@ -3888,13 +3893,33 @@ of @code{mpfr_digest_init}. The function updates the hash state in
 Return 1 if successful, and 0 if an error occurred.
 @end deftypefun
 
-@deftypefun int mpfr_hash32_final (const mpfr_digest_ctx_t *@var{ctx}, mpfr_digest_t *@var{digest})
+@deftypefun int mpfr_hash32_final (const mpfr_digest_ctx_t @var{ctx}, mpfr_digest_t *@var{digest})
 This is the default function to finalize a 32-bit hash digest
 using the FNV-1a hash algorithm. It can be used as the @var{final_fn} argument
 of @code{mpfr_digest_init}. The function stores the final hash digest in
 the buffer pointed to by @var{digest}, which must be already allocated
 and be large enough to hold a 32-bit digest.
 Return 1 if successful, and a 0 if an error occurred.
+@end deftypefun
+
+@deftypefun mpfr_digest_t mpfr_digest_ctx_get_hash (const mpfr_digest_ctx_t @var{ctx})
+Return the current hash state stored in the digest context @var{ctx}.
+
+Note: This function is intended for use in custom hash update and final functions.
+Do not use it as a substitute for @code{mopfr_digest_final} to get the final digest,
+as the hash state returned by this function is not necessarily the final digest
+(for example, it may need to be further processed by a final function to produce
+the final digest).
+@end deftypefun
+
+@deftypefun void mpfr_digest_ctx_set_hash (mpfr_digest_ctx_t @var{ctx}, mpfr_digest_t @var{hash})
+Set the hash state in the digest context @var{ctx} to @var{hash}.
+
+Note: This function is intended for use in custom hash update functions.
+Do not use it as a substitute for @code{mpfr_digest_init} to initialize the context
+with a given hash state, as the context initialized by @code{mpfr_digest_init}
+may have some internal state that is not properly initialized if the
+hash state is set manually without using @code{mpfr_digest_init}.
 @end deftypefun
 
 @deftypefun mpfr_digest_t mpfr_hash32 (const mpfr_t @var{x})
@@ -3906,10 +3931,11 @@ by MPFR, as follows:
 @example
 mpfr_digest_ctx_t ctx;
 mpfr_digest_t digest;
-mpfr_digest_init (&ctx, sizeof (mpfr_digest_t), mpfr_hash32_update,
-                  mpfr_hash32_final);
-mpfr_digest_update_m (&ctx, x);
-mpfr_digest_final (&ctx, &digest);
+ctx = mpfr_digest_init (MPFR_HASH32_BASIS, sizeof (mpfr_digest_t),
+                        mpfr_hash32_update, mpfr_hash32_final);
+mpfr_digest_update_m (ctx, x);
+mpfr_digest_final (ctx, &digest);
+mpfr_digest_ctx_clear (&ctx);
 @end example
 Return 0 if an error occurred while computing the digest.
 
@@ -4724,6 +4750,12 @@ use @code{mpfr_get_z_exp}.
 @item @code{mpfr_hash32_update} in MPFR@tie{}4.3.
 
 @item @code{mpfr_hash32_final} in MPFR@tie{}4.3.
+
+@item @code{mpfr_digest_ctx_clear} in MPFR@tie{}4.3.
+
+@item @code{mpfr_digest_ctx_get_hash} in MPFR@tie{}4.3.
+
+@item @code{mpfr_digest_ctx_set_hash} in MPFR@tie{}4.3.
 
 @item @code{mpfr_hash32} in MPFR@tie{}4.3.
 

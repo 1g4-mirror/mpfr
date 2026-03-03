@@ -391,7 +391,8 @@ typedef enum {
 # define MPFR_RETURNS_NONNULL
 #endif
 
-#define MPFR_FNV_HASH32_BYTES 4
+#define MPFR_HASH32_BASIS 0x811C9DC5U
+#define MPFR_HASH32_BYTES 4
 typedef unsigned long mpfr_digest_t;
 
 typedef struct {
@@ -399,15 +400,14 @@ typedef struct {
   size_t len;
 } mpfr_bytes_t;
 
-struct mpfr_digest_ctx_t;
+struct mpfr_digest_ctx;
+typedef struct mpfr_digest_ctx *mpfr_digest_ctx_t;
 
-typedef int (*hash_update_fn_t) (struct mpfr_digest_ctx_t *,
+typedef int (*hash_update_fn_t) (mpfr_digest_ctx_t,
                                  const unsigned char *,
                                  size_t);
-typedef int (*hash_final_fn_t) (const struct mpfr_digest_ctx_t *,
+typedef int (*hash_final_fn_t) (const mpfr_digest_ctx_t,
                                 mpfr_digest_t *);
-
-typedef struct mpfr_digest_ctx_t mpfr_digest_ctx_t;
 
 /* Note: In order to be declared, some functions need a specific
    system header to be included *before* "mpfr.h". If the user
@@ -903,17 +903,20 @@ __MPFR_DECLSPEC void mpfr_bytes_free (mpfr_bytes_t *);
 
 /* Hash functions */
 __MPFR_DECLSPEC mpfr_digest_t mpfr_hash32 (mpfr_srcptr);
-__MPFR_DECLSPEC int mpfr_hash32_update (mpfr_digest_ctx_t *,
+__MPFR_DECLSPEC int mpfr_hash32_update (mpfr_digest_ctx_t,
                                         const unsigned char *, size_t);
-__MPFR_DECLSPEC int mpfr_hash32_final (const mpfr_digest_ctx_t *,
+__MPFR_DECLSPEC int mpfr_hash32_final (const mpfr_digest_ctx_t,
                                        mpfr_digest_t *);
-__MPFR_DECLSPEC void mpfr_digest_init (mpfr_digest_ctx_t *, size_t,
+__MPFR_DECLSPEC mpfr_digest_ctx_t mpfr_digest_init (mpfr_digest_t, size_t,
                                        hash_update_fn_t, hash_final_fn_t);
-__MPFR_DECLSPEC int mpfr_digest_update (mpfr_digest_ctx_t *,
+__MPFR_DECLSPEC void mpfr_digest_ctx_clear (mpfr_digest_ctx_t *);
+__MPFR_DECLSPEC int mpfr_digest_update (mpfr_digest_ctx_t,
                                         const unsigned char *, size_t);
-__MPFR_DECLSPEC int mpfr_digest_update_m (mpfr_digest_ctx_t *, mpfr_srcptr);
-__MPFR_DECLSPEC int mpfr_digest_final (const mpfr_digest_ctx_t *,
+__MPFR_DECLSPEC int mpfr_digest_update_m (mpfr_digest_ctx_t, mpfr_srcptr);
+__MPFR_DECLSPEC int mpfr_digest_final (const mpfr_digest_ctx_t,
                                        mpfr_digest_t *);
+__MPFR_DECLSPEC mpfr_digest_t mpfr_digest_ctx_get_hash (const mpfr_digest_ctx_t);
+__MPFR_DECLSPEC void mpfr_digest_ctx_set_hash (mpfr_digest_ctx_t, mpfr_digest_t);
 __MPFR_DECLSPEC int mpfr_fpif_export_mem (unsigned char *, size_t, mpfr_srcptr);
 __MPFR_DECLSPEC int mpfr_fpif_import_mem (mpfr_ptr, unsigned char *, size_t);
 
