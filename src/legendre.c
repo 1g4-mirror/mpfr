@@ -125,14 +125,13 @@ mpfr_legendre (mpfr_ptr res, long n, mpfr_srcptr x, mpfr_rnd_t rnd_mode)
 
           /* FIXME: The code is still incorrect on x = 0 because 0 does not
              have an exponent. But there are many simplifications is this
-             case. Intermediate overflows are not taken into account
-             either... If they are not necessarily real overflows (due to
-             the cancellation), UBF might be a solution. Also be careful with
-             integer overflows in the computation of the error bounds.
-             Intermediate underflows are probably harmless, but must be
-             taken into account in the error analysis. Final underflows
-             (in mpfr_sub or mpfr_div_ui) are probably possible, and also
-             need to be taken into account. */
+             case. Overflows are not possible in [-1,1], but the exponent
+             range needs to be extended as usual. Intermediate underflows
+             are probably harmless, but must be taken into account in the
+             error analysis. Final underflows (in mpfr_sub or mpfr_div_ui)
+             might also be possible, and also need to be taken into account.
+             Note: in the extended exponent range, underflows could occur
+             only in very high precisions (thus only on 32-bit machines). */
 
           /* first_term = x * (2 * i - 1), with absolute error at step i
              (denoted f_i in algorithms.tex)
