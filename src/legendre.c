@@ -128,7 +128,11 @@ mpfr_legendre (mpfr_ptr res, long n, mpfr_srcptr x, mpfr_rnd_t rnd_mode)
              case. Intermediate overflows are not taken into account
              either... If they are not necessarily real overflows (due to
              the cancellation), UBF might be a solution. Also be careful with
-             integer overflows in the computation of the error bounds. */
+             integer overflows in the computation of the error bounds.
+             Intermediate underflows are probably harmless, but must be
+             taken into account in the error analysis. Final underflows
+             (in mpfr_sub or mpfr_div_ui) are probably possible, and also
+             need to be taken into account. */
 
           /* first_term = x * (2 * i - 1), with absolute error at step i
              (denoted f_i in algorithms.tex)
