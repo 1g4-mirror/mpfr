@@ -3125,6 +3125,65 @@ $E_1(-x)$, defined by \cite[formula 5.1.11]{AbSt73}:
 We use the very same algorithm and error analysis as above (including the
 asymptotic expansion).
 
+\subsection{The factorial function}
+
+Factorial is computed by MPFR using the straightforward iterative algorithm.
+Since $n!$ is a positive integer, it is computed exactly, as a product of
+consecutive integers, and then rounded to the target precision; consecutive
+integers are grouped so that the product of each group still fits in an
+\texttt{unsigned long}, hence a single \texttt{mpfr\_mul\_ui} call is needed
+for each group.
+
+Since $n!$ grows very fast, for large $n$ the result is out of the exponent
+range, and computing the product just to discover this could be slow.
+MPFR thus hard-codes a threshold \texttt{MPFR\_FAC\_OVERFLOW\_N} on $n$, at or
+above which the overflow is returned directly, namely $84,182,992,257,887,725$
+when \texttt{mpfr\_exp\_t} has $64$ bits and $44,787,928$ when it has $32$ bits.
+We prove below that these two values are correct, i.e. that $n!$ does overflow
+for every $n$ at or above the corresponding threshold. Here's a preliminary
+lemma that would be useful for proving the threshold. 
+
+\begin{lemma} \label{lemma_faclb}
+For every integer $n \geq 1$, $\log (n!) \geq n \log n - n + 1$, that is,
+$n! \geq e \left( \frac{n}{e} \right)^n$.
+\end{lemma}
+\begin{proof}
+Since $\log$ is strictly increasing, $\log k \geq \int_{k-1}^{k} \log t \, dt$
+for every integer $k \geq 2$. Summing these inequalities for $k = 2, \ldots, n$
+gives
+\[
+  \log (n!) = \sum_{k=2}^{n} \log k \geq \int_{1}^{n} \log t \, dt
+            = \left[ t \log t - t \right]_{1}^{n} = n \log n - n + 1.
+\]
+For what concerns the case $n = 1$, we simply get the identity
+$\log (1) = 1 \log (1) - 1 + 1$.
+\end{proof}
+
+The bound in Lemma \ref{lemma_faclb} can be seen as a weakened form of
+Stirling's bound \cite[formula 6.1.38]{AbSt73}.
+
+The exponent of $n!$ satisfies $2^{\Exp(n!)-1} \leq n! < 2^{\Exp(n!)}$, i.e.
+$\Exp(n!) = \lfloor \frac{\log(n!)}{\log 2} \rfloor + 1$, so $n!$ is out of
+the exponent range --- and \texttt{mpfr\_fac\_ui} returns an overflow --- as soon
+as $\lfloor \frac{\log(n!)}{\log 2} \rfloor \geq e_{max}$. Dividing the bound in
+Lemma \ref{lemma_faclb} by $\log 2$, and since $e_{max}$ is an integer, this is
+in particular the case whenever
+\begin{equation} \label{eq:facovf}
+\frac{n \log n - n + 1}{\log 2} \geq e_{max}.
+\end{equation}
+
+For $n \geq 1$, The left-hand side of \eqref{eq:facovf} is (monotonically)
+increasing; once it holds for some $n$, it holds for every larger $n$. So
+it's enough to consider the largest allowed exponent \texttt{MPFR\_EMAX\_MAX},
+The two thresholds above are precisely the smallest $n$ satisfying
+\eqref{eq:facovf} for these two values of $e_{max}$, which proves their
+correctness.
+
+Below that threshold an overflow can still occur, and is then detected either
+by another heuristic which computes
+$\lfloor \frac{\log \Gamma(n+1)}{\log 2} \rfloor > e_{max},$
+or directly on one of the intermediate products.
+
 \subsection{The gamma function}
 
 % See http://oldmill.uchicago.edu/~wilder/Code/gamma
