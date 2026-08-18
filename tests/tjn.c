@@ -356,7 +356,8 @@ main (int argc, char *argv[])
       exit (1);
     }
 
-  /* On 2026-05-27, the case i == 5 loops on 32-bit machines (-m32). */
+  /* On 2026-05-27, the case i == 5 loops on 32-bit machines (-m32).
+     Note: this was fixed by 0aa69a736 */
   for (i = 4; i <= 5; i++)
     {
       mpfr_set_si (x, i, MPFR_RNDN);
@@ -370,7 +371,10 @@ main (int argc, char *argv[])
   mpfr_clear (x);
   mpfr_clear (y);
 
-  test_generic_si (MPFR_PREC_MIN, 100, 100);
+  /* generic tests are not executed by default because they make the test suite
+     slow on 32-bit machines */
+  if (getenv ("MPFR_CHECK_LARGEMEM") != NULL)
+    test_generic_si (MPFR_PREC_MIN, 100, 100);
 
   tests_end_mpfr ();
 
